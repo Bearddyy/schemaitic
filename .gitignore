@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.log
+*.ngc
+*.raw
+*.vtc
+*-BACKUP.kicad_sch
+*-backups/
+fp-lib-table
+sym-lib-table
