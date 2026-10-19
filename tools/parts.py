@@ -63,6 +63,7 @@ class PartBase(SkidlPart):
         footprint: Optional[str] = None,
         rules: Tuple[Rule, ...] = (),
         datasheet: Optional[str] = None,
+        mode: Optional[str] = None,
         **extra: Any,
     ) -> None:
         if not self._LIB:
@@ -84,6 +85,10 @@ class PartBase(SkidlPart):
             self.value = to_value(value)
         else:
             self._schemaitic_value: Optional[Value] = None
+        # Declared operating mode (see rules.ModeRule): strap pins decide a
+        # chip's function; declaring the intent here lets rules resolve
+        # differently per mode at check time.
+        self.mode = mode
         if rules:
             attach_rules(self, rules)
 

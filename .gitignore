@@ -15,5 +15,7 @@ kicad-libs/
 *.net
 *.svg
 *.kicad_sch
+*_sklib.py
+out/
 fp-lib-table
 sym-lib-table

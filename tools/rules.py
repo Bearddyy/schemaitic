@@ -32,17 +32,22 @@ __all__ = [
     "RuleViolation",
     "NeedsHuman",
     "GroundedRule",
+    "PullState",
+    "PullRule",
     "NoConnectRule",
     "PinOnNetRule",
     "LambdaRule",
     "ManualRule",
+    "ModeRule",
     "attach_rules",
     "get_rules",
+    "effective_rules",
     "check_part",
     "check_all",
     "lib_name",
     "get_pin",
     "GROUND_NET_PATTERN",
+    "RAIL_NET_PATTERN",
 ]
 
 # A pin reference within a part: pin number ("1", 2) or pin name ("GND").
@@ -52,6 +57,13 @@ PinRef = str | int
 # variants, with optional digits (GND1, AGND2, ...).
 GROUND_NET_PATTERN: re.Pattern[str] = re.compile(
     r"^(A?V?(SS|DD0?G)?|GND\d?|AGND\d?|DGND\d?|PGND\d?|EARTH|CHASSIS)$",
+    re.IGNORECASE,
+)
+
+# Conventional positive-rail names used to accept hard-strap-high: VCC, VDD,
+# V5, VIN, VBAT, 3V3, 1V8, P3V3 ... (anything clearly not a signal net).
+RAIL_NET_PATTERN: re.Pattern[str] = re.compile(
+    r"^(P?V\d?CC?\d?|VDD\d?|VIN\d?|VCC\d?|VBAT\d?|VREF\d?|P?\d+V\d+|\d+V\d*)$",
     re.IGNORECASE,
 )
 
@@ -225,6 +237,16 @@ class Rule:
     def __init__(self, description: str) -> None:
         self.description = description
 
+    def apply_to(self, part: object, mode: str | None) -> "Rule | None":
+        """Resolve this rule for a part's declared mode.
+
+        Returns the rule to actually check (possibly re-parameterised for
+        the mode, e.g. a PullRule that requires LOW when mode='shutdown'),
+        or None to drop the rule entirely in that mode. Default: mode has
+        no effect, check as-is.
+        """
+        return self
+
     def check(self, part: object) -> None:
         """Automated check. Raise RuleViolation or NeedsHuman; return to pass."""
         raise NotImplementedError(
@@ -292,6 +314,181 @@ class GroundedRule(Rule):
         if not any(self.predicate(n) for n in names):
             raise RuleViolation(
                 f"pin {self.pin_ref} is on net(s) {names}, none ground-like"
+            )
+
+
+class PullState(Enum):
+    """How a configuration/strap pin may be terminated, per datasheet."""
+
+    HIGH = "high"        # pulled to a positive rail through a resistor
+    LOW = "low"          # pulled to ground through a resistor
+    FLOATING = "floating"  # datasheet allows leaving it unconnected
+
+
+class PullRule(Rule):
+    """A strap/config pin's termination: pulled high, pulled low, floating.
+
+    Datasheets commonly say e.g. "MODE: pull high with >10k for function A,
+    pull low with 10k for function B, leave floating for function C". One
+    rule captures the set of allowed states:
+
+        PullRule("MODE", {PullState.HIGH, PullState.LOW, PullState.FLOATING})
+        PullRule(8, {PullState.LOW}, max_ohms=10e3)   # datasheet value limit
+
+    A pull is satisfied when the pin shares a net with a resistor whose far
+    end lands on a rail (ground-like for LOW, non-ground for HIGH). Direct
+    rail connection (hard strap) also passes; a pin wired straight to the
+    *opposite* rail fails. FLOATING passes only with no connection.
+    """
+
+    def __init__(
+        self,
+        pin: PinRef,
+        states: Iterable[PullState],
+        *,
+        max_ohms: float | None = None,
+        min_ohms: float | None = None,
+        description: str | None = None,
+    ) -> None:
+        self.pin_ref = pin
+        self.states = frozenset(states)
+        if not self.states:
+            raise ValueError("PullRule needs at least one allowed state")
+        self.max_ohms = max_ohms
+        self.min_ohms = min_ohms
+        super().__init__(
+            description
+            or f"pin {pin} termination in "
+            + "/".join(sorted(s.value for s in self.states))
+        )
+
+    # --- helpers ---------------------------------------------------------
+
+    @staticmethod
+    def _net_objs_are_ground(nets: list[Any]) -> bool:
+        if any(getattr(n, "ground", False) for n in nets):
+            return True
+        return all(
+            GROUND_NET_PATTERN.match(str(getattr(n, "name", ""))) for n in nets
+        )
+
+    @staticmethod
+    def _resistor_value(part: Any) -> float | None:
+        """Ohms of a resistor part, or None if not a resolvable resistor."""
+        if getattr(part, "name", None) != "R":
+            return None
+        val = getattr(part, "value", None)
+        if val is None:
+            return None
+        si = getattr(val, "si", None)  # schemaitic Value
+        if si is not None:
+            return float(si)
+        from values import Value  # plain string values from SKiDL libs
+
+        try:
+            return Value.parse(str(val)).si
+        except (ValueError, TypeError):
+            return None
+
+    def _check_ohms(self, ohms: float) -> None:
+        if self.max_ohms is not None and ohms > self.max_ohms:
+            raise RuleViolation(
+                f"pull resistor is {ohms:g} ohm, datasheet allows at most "
+                f"{self.max_ohms:g} ohm"
+            )
+        if self.min_ohms is not None and ohms < self.min_ohms:
+            raise RuleViolation(
+                f"pull resistor is {ohms:g} ohm, datasheet requires at least "
+                f"{self.min_ohms:g} ohm"
+            )
+
+    # --- check -------------------------------------------------------------
+
+    def check(self, part: object) -> None:
+        pin = get_pin(part, self.pin_ref)
+        own_nets = pin_nets(pin)
+
+        if not own_nets:
+            if PullState.FLOATING in self.states:
+                return
+            raise RuleViolation(
+                f"pin {self.pin_ref} is floating; datasheet requires a "
+                + "/".join(sorted(s.value for s in self.states)) + " strap"
+            )
+
+        own_names = {str(n.name) for n in own_nets}
+        # Parts sharing a net with this pin, via the pins of those nets.
+        candidates: list[Any] = []
+        for net in own_nets:
+            get_pins = getattr(net, "get_pins", None)
+            if get_pins is None:
+                continue
+            for other in get_pins():
+                cand_part = getattr(other, "part", None)
+                if cand_part is not None and cand_part is not part:
+                    candidates.append(cand_part)
+
+        found: list[str] = []
+        for cand in candidates:
+            # Hard strap: resistor of 0 ohm is effectively direct wiring.
+            ohms = self._resistor_value(cand)
+            if ohms is None:
+                continue
+            own_ids = {id(n) for n in own_nets}
+            far_nets: list[Any] = []
+            for cpin in cand.pins:
+                cn = pin_nets(cpin)
+                # skip the pin that attaches the resistor to *this* pin's nets
+                if any(id(n) in own_ids for n in cn):
+                    continue
+                far_nets.extend(cn)
+            # Dangling resistor (both ends on this pin's own net, or the far
+            # end unconnected) is not a pull.
+            if not far_nets or all(id(n) in own_ids for n in far_nets):
+                continue
+            low = self._net_objs_are_ground(far_nets)
+            high = all(
+                RAIL_NET_PATTERN.match(str(n.name)) for n in far_nets
+            )
+            if (low and PullState.LOW in self.states) or (
+                high and PullState.HIGH in self.states
+            ):
+                self._check_ohms(ohms)
+                found.append(
+                    f"{ohms:g} ohm pull to "
+                    + ",".join(sorted(str(n.name) for n in far_nets))
+                    + f" ({'low' if low else 'high'})"
+                )
+
+        if found:
+            return
+
+        # No valid resistor pull. A hard strap (direct rail connection) is
+        # only accepted when the rail is recognisable: ground-like counts as
+        # LOW, a conventional power-rail name counts as HIGH. Anything else
+        # (a signal net, an ambiguous name) FAILS — we refuse to guess which
+        # rail an unnamed net sits on.
+        if own_nets:
+            if self._net_objs_are_ground(own_nets):
+                if PullState.LOW in self.states:
+                    return
+                direct = "low"
+            elif all(RAIL_NET_PATTERN.match(nm) for nm in own_names):
+                if PullState.HIGH in self.states:
+                    return
+                direct = "high"
+            else:
+                raise RuleViolation(
+                    f"pin {self.pin_ref} is on "
+                    + ",".join(sorted(own_names))
+                    + " with no pull resistor to a rail; allowed: "
+                    + "/".join(sorted(s.value for s in self.states))
+                )
+            raise RuleViolation(
+                f"pin {self.pin_ref} is hard-tied ({direct}) to "
+                + ",".join(sorted(own_names))
+                + "; allowed: "
+                + "/".join(sorted(s.value for s in self.states))
             )
 
 
@@ -366,6 +563,83 @@ class ManualRule(Rule):
 _RULES_ATTR = "rules"
 
 
+class ModeRule(Rule):
+    """Declares and verifies the operating mode a part is strapped into.
+
+    A part picks its function with strap pins (MODE, SHDN, ADDR...). The
+    design declares the intended mode once at construction; this rule then:
+
+    1. verifies the strap pin's termination matches the mode's requirement
+       (its PullRule-style check), and
+    2. *switches the rule set*: mode_rules maps each mode to the extra rules
+       that mode implies, so downstream rules only apply in the right mode.
+
+        u1 = SomeChip(ref="U1", mode="sleep")
+        attach_rules(u1, [
+            ModeRule(
+                "MODE",
+                mode_requirements={
+                    "run":   {PullState.FLOATING},
+                    "sleep": {PullState.LOW},
+                },
+                mode_rules={
+                    # extra rules that only apply in 'sleep'
+                    "sleep": [GroundedRule("SHDN")],
+                    # 'run' adds none
+                },
+            ),
+        ])
+
+    Rules returned via mode_rules are resolved (and recursively mode-resolved)
+    by effective_rules(); the ModeRule itself still checks the strap pin.
+    """
+
+    def __init__(
+        self,
+        pin: PinRef,
+        mode_requirements: dict[str, "PullState | frozenset[PullState]"],
+        mode_rules: dict[str, Sequence["Rule"]] | None = None,
+        *,
+        description: str | None = None,
+    ) -> None:
+        self.pin_ref = pin
+        # normalise values to frozensets
+        self.mode_requirements: dict[str, frozenset[PullState]] = {
+            m: (s if isinstance(s, frozenset) else frozenset({s}))
+            for m, s in mode_requirements.items()
+        }
+        self.mode_rules: dict[str, tuple[Rule, ...]] = {
+            m: tuple(rs) for m, rs in (mode_rules or {}).items()
+        }
+        super().__init__(
+            description or f"pin {pin} mode strap ({'/'.join(sorted(self.mode_requirements))})"
+        )
+
+    def pull_rule_for(self, mode: str) -> "PullRule":
+        return PullRule(self.pin_ref, self.mode_requirements[mode])
+
+    def check(self, part: object) -> None:
+        mode = getattr(part, "mode", None)
+        if mode is None:
+            raise NeedsHuman(
+                f"which mode is this part strapped for? one of "
+                f"{sorted(self.mode_requirements)} (pass mode=... at construction)"
+            )
+        if mode not in self.mode_requirements:
+            raise RuleViolation(
+                f"declared mode {mode!r} is not one of {sorted(self.mode_requirements)}"
+            )
+        # verify the strap termination matches the declared mode
+        self.pull_rule_for(mode).check(part)
+
+    def extra_rules_for(self, part: object) -> tuple[Rule, ...]:
+        """Rules implied by the part's declared mode (empty if none)."""
+        mode = getattr(part, "mode", None)
+        if mode is None:
+            return ()
+        return self.mode_rules.get(str(mode), ())
+
+
 def attach_rules(part: Any, rules: Iterable[Rule]) -> tuple[Rule, ...]:
     """Attach rules to a part and return the tuple now stored on it.
 
@@ -393,6 +667,41 @@ def get_rules(part: object) -> tuple[Rule, ...]:
     return tuple(rules)
 
 
+
+def effective_rules(part: object) -> tuple[Rule, ...]:
+    """Rules to actually check for a part, after mode resolution.
+
+    Each attached rule gets a chance to re-parameterise or drop itself for
+    the part's declared mode via Rule.apply_to(); ModeRules additionally
+    inject the extra rules their mode implies (resolved recursively, with a
+    depth guard so a misconfigured rule set can't loop forever).
+    """
+    rules = get_rules(part)
+    mode = getattr(part, "mode", None)
+    out: list[Rule] = []
+    seen_modes: set[tuple[int, str]] = set()
+
+    def resolve(rs: Sequence[Rule], depth: int) -> None:
+        if depth > 8:
+            raise RuntimeError("rule resolution too deep — cyclic mode_rules?")
+        for rule in rs:
+            if isinstance(rule, ModeRule):
+                m = str(mode)
+                key = (id(rule), m)
+                if key in seen_modes:
+                    continue  # already injected this mode's extras
+                seen_modes.add(key)
+                out.append(rule)  # the strap check itself
+                resolve(rule.extra_rules_for(part), depth + 1)
+            else:
+                applied = rule.apply_to(part, mode)
+                if applied is not None:
+                    out.append(applied)
+
+    resolve(rules, 0)
+    return tuple(out)
+
+
 # --- Runners --------------------------------------------------------------------
 
 
@@ -402,8 +711,12 @@ def check_part(
     *,
     allow_input: bool = True,
 ) -> list[RuleOutcome]:
-    """Check one part against its attached rules (or an explicit list)."""
-    effective = tuple(rules) if rules is not None else get_rules(part)
+    """Check one part against its attached rules (or an explicit list).
+
+    Without an explicit list, rules go through effective_rules() first so
+    mode-declared parts get their mode-resolved / mode-implied rule set.
+    """
+    effective = tuple(rules) if rules is not None else effective_rules(part)
     return [rule.run(part, allow_input=allow_input) for rule in effective]
 
 
