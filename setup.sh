@@ -16,6 +16,8 @@ if [ ! -x "$REPO/.venv/bin/python" ]; then
 fi
 "$REPO/.venv/bin/pip" install --upgrade pip -q
 "$REPO/.venv/bin/pip" install -q skidl schematizer inspice matplotlib
+# Dev/quality tools: the fail-early gate (./check.sh) and unit tests.
+"$REPO/.venv/bin/pip" install -q mypy pytest
 
 # SPICE simulation needs ngspice with its shared library (libngspice.so):
 #   Arch: sudo pacman -S ngspice | Debian/Ubuntu: sudo apt install ngspice
@@ -40,6 +42,13 @@ clone_lib() {
 clone_lib symbols    https://gitlab.com/kicad/libraries/kicad-symbols
 clone_lib footprints https://gitlab.com/kicad/libraries/kicad-footprints
 
+echo "==> Type check (fail-early gate)"
+cd "$REPO"
+"$REPO/check.sh"
+
+echo "==> Unit tests"
+"$REPO/.venv/bin/python" -m pytest tests/ -q
+
 echo "==> Smoke test"
 cd "$REPO/examples"
 # shellcheck disable=SC1091
@@ -49,3 +58,4 @@ source "$REPO/env.sh"
   || { echo "    smoke test FAILED - run examples/divider.py manually"; exit 1; }
 
 echo "Done. Usage: source env.sh && .venv/bin/python <script>.py"
+echo "Workflow gate: ./check.sh (mypy strict) before committing tools/ changes."

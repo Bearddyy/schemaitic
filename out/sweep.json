@@ -1,0 +1,138 @@
+[
+  {
+    "params": {
+      "C": "1N"
+    },
+    "erc_errors": 0,
+    "unmapped_parts": [],
+    "analyses": [
+      {
+        "type": "op",
+        "nodes": {
+          "vo": 0.0,
+          "vi": 0.0
+        }
+      },
+      {
+        "type": "tran",
+        "step": 5e-06,
+        "end": 0.01,
+        "nodes": {
+          "vi": {
+            "max": 5.0,
+            "final": 0.0,
+            "n_points": 2055
+          },
+          "vo": {
+            "max": 1.5986394557823125,
+            "final": 2.4327044e-316,
+            "n_points": 2055
+          }
+        }
+      }
+    ],
+    "sweep_label": "C=1N"
+  },
+  {
+    "params": {
+      "C": "10N"
+    },
+    "erc_errors": 0,
+    "unmapped_parts": [],
+    "analyses": [
+      {
+        "type": "op",
+        "nodes": {
+          "vo": 0.0,
+          "vi": 0.0
+        }
+      },
+      {
+        "type": "tran",
+        "step": 5e-06,
+        "end": 0.01,
+        "nodes": {
+          "vi": {
+            "max": 5.0,
+            "final": 0.0,
+            "n_points": 2045
+          },
+          "vo": {
+            "max": 1.5986394557823067,
+            "final": 1.4087190102923997e-68,
+            "n_points": 2045
+          }
+        }
+      }
+    ],
+    "sweep_label": "C=10N"
+  },
+  {
+    "params": {
+      "C": "100N"
+    },
+    "erc_errors": 0,
+    "unmapped_parts": [],
+    "analyses": [
+      {
+        "type": "op",
+        "nodes": {
+          "vo": 0.0,
+          "vi": 0.0
+        }
+      },
+      {
+        "type": "tran",
+        "step": 5e-06,
+        "end": 0.01,
+        "nodes": {
+          "vi": {
+            "max": 5.0,
+            "final": 0.0,
+            "n_points": 2045
+          },
+          "vo": {
+            "max": 1.5986391975651049,
+            "final": 2.582187876744285e-07,
+            "n_points": 2045
+          }
+        }
+      }
+    ],
+    "sweep_label": "C=100N"
+  },
+  {
+    "params": {
+      "C": "1U"
+    },
+    "erc_errors": 0,
+    "unmapped_parts": [],
+    "analyses": [
+      {
+        "type": "op",
+        "nodes": {
+          "vo": 0.0,
+          "vi": 0.0
+        }
+      },
+      {
+        "type": "tran",
+        "step": 5e-06,
+        "end": 0.01,
+        "nodes": {
+          "vi": {
+            "max": 5.0,
+            "final": 0.0,
+            "n_points": 2045
+          },
+          "vo": {
+            "max": 1.2639918934038792,
+            "final": 0.26459505405867084,
+            "n_points": 2045
+          }
+        }
+      }
+    ],
+    "sweep_label": "C=1U"
+  }
+]
