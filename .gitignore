@@ -8,5 +8,12 @@ venv/
 *.vtc
 *-BACKUP.kicad_sch
 *-backups/
+.venv/
+kicad-libs/
+*.erc
+*.log
+*.net
+*.svg
+*.kicad_sch
 fp-lib-table
 sym-lib-table
