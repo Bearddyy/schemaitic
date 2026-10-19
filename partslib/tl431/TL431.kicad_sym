@@ -1,0 +1,23 @@
+(kicad_symbol_lib
+  (version 20240101)
+  (generator "schemaitic-partslib")
+  (symbol "TL431" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 5.08 0))
+    (property "Value" "TL431" (at 0 -5.08 0))
+    (property "Footprint" "" (at 0 0 0))
+    (property "Datasheet" "https://www.ti.com/lit/ds/symlink/tl431.pdf" (at 0 0 0))
+    (symbol "TL431_0_1"
+      (rectangle (start -5.08 3.81) (end 5.08 -3.81)
+        (stroke (width 0.254) (type default)) (fill (type background))))
+    (symbol "TL431_1_1"
+      (pin passive line (at -7.62 2.54 0) (length 2.54)
+        (name "CATHODE" (effects (font (size 1.27 1.27))))
+        (number "1" (effects (font (size 1.27 1.27)))))
+      (pin passive line (at 0 -6.35 90) (length 2.54)
+        (name "ANODE" (effects (font (size 1.27 1.27))))
+        (number "2" (effects (font (size 1.27 1.27)))))
+      (pin passive line (at 7.62 2.54 180) (length 2.54)
+        (name "REFERENCE" (effects (font (size 1.27 1.27))))
+        (number "3" (effects (font (size 1.27 1.27)))))
+  )
+)

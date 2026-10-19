@@ -160,6 +160,15 @@ def get_pin(part: object, ref: PinRef) -> PinLike:
     raise KeyError(f"part {part!r} has no pin {ref!r}; pins: {available}")
 
 
+def pin_nets(pin: PinLike) -> list[Any]:
+    """The net objects a pin is attached to (empty if unconnected).
+
+    Returns the live Net objects so rules can test type (Ground) rather
+    than only spelling; untyped upstream, hence Any.
+    """
+    return list(pin.nets)
+
+
 def pin_net_names(pin: PinLike) -> list[str]:
     """Names of the nets a pin is attached to (empty if unconnected)."""
     return [str(n.name) for n in pin.nets]
@@ -264,16 +273,22 @@ class GroundedRule(Rule):
         pin: PinRef,
         *,
         predicate: Callable[[str], bool] | None = None,
+        description: str | None = None,
     ) -> None:
         self.pin_ref = pin
         self.predicate = predicate or (lambda n: bool(GROUND_NET_PATTERN.match(n)))
-        super().__init__(f"pin {pin} must be grounded")
+        super().__init__(description or f"pin {pin} must be grounded")
 
     def check(self, part: object) -> None:
         pin = get_pin(part, self.pin_ref)
-        names = pin_net_names(pin)
-        if not names:
+        nets = pin_nets(pin)
+        if not nets:
             raise RuleViolation(f"pin {self.pin_ref} is unconnected (needs a ground net)")
+        # Type-first: schemaitic.net.Ground marks ground by TYPE.
+        if any(getattr(n, "ground", False) for n in nets):
+            return
+        # Spelling fallback for plain SKiDL nets (GND/VSS/... convention).
+        names = [str(n.name) for n in nets]
         if not any(self.predicate(n) for n in names):
             raise RuleViolation(
                 f"pin {self.pin_ref} is on net(s) {names}, none ground-like"

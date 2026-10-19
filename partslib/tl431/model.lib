@@ -1,0 +1,9 @@
+* TL431 programmable shunt reference - schemaitic placeholder subckt.
+* Simple behavioural stand-in (cathode reference impedance + bias) so designs
+* simulate before a vendor-grade model is dropped in. Replace with the
+* manufacturer's .lib when one is available; the pin order must stay
+* CATHODE ANODE REFERENCE to match TL431.kicad_sym.
+.subckt TL431 CATHODE ANODE REFERENCE
+RZ CATHODE ANODE 18
+RB CATHODE REFERENCE 1e6
+.ends TL431

@@ -1,0 +1,17 @@
+path: /home/dan/repos/schemaitic/partslib/tl431/model.lib
+date: '2026-10-19T23:22:57.842667'
+digest: b40138ad94874a7d2257a0dec5a7348e4b25ec23
+description: ''
+subcircuits:
+- name: TL431
+  description: ''
+  nodes:
+  - index: 0
+    name: CATHODE
+    internal_node: 1
+  - index: 1
+    name: ANODE
+    internal_node: 2
+  - index: 2
+    name: REFERENCE
+    internal_node: 3
