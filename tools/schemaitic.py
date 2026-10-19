@@ -277,9 +277,63 @@ def stage_sim(mod: types.ModuleType, sweep: tuple[str, list[str]] | None, plot: 
         print(f"plot: {plot}", file=sys.stderr)
 
 
+def stage_test(mod: types.ModuleType, outdir: Path) -> None:
+    """Run SPICE design tests declared by the design (Schematic.design_tests).
+
+    A failing assertion means the circuit no longer meets its spec -> exit 1.
+    Works with OO designs (Schematic subclasses); function-style build()
+    designs must migrate to declare tests on the class.
+    """
+    from schematic import Schematic
+
+    cls: type[Schematic] | None = None
+    for value in vars(mod).values():
+        if (isinstance(value, type) and issubclass(value, Schematic)
+                and value is not Schematic
+                and getattr(value, "__module__", None) == mod.__name__):
+            cls = value
+            break
+    if cls is None:
+        raise SystemExit(
+            f"{mod.__file__}: design must define a Schematic subclass "
+            "with design_tests()"
+        )
+    design = cls()
+    design.build()
+    tests = design.design_tests()
+    if not tests:
+        raise SystemExit(f"{cls.__name__}.design_tests() declared no tests")
+
+    results: list[dict[str, Any]] = []
+    failed = 0
+    for sim in tests:
+        try:
+            res = sim.run(design)
+            entry = res.to_dict()
+            if not res.passed:
+                failed += 1
+        except Exception as exc:  # a crashing sim is also a failure
+            entry = {"sim": getattr(sim, "name", "?"), "passed": False,
+                     "error": f"{type(exc).__name__}: {exc}"}
+            failed += 1
+        results.append(entry)
+
+    outdir.mkdir(parents=True, exist_ok=True)
+    out_path = outdir / "design_tests.json"
+    out_path.write_text(json.dumps(
+        {"design": cls.__name__, "passed": failed == 0, "tests": results},
+        indent=2, default=str,
+    ))
+    print(json.dumps({"passed": failed == 0, "design": cls.__name__,
+                      "tests": [{"sim": r["sim"], "passed": r["passed"]}
+                                for r in results]}))
+    if failed:
+        raise SystemExit(1)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="schemaitic", description=__doc__.splitlines()[0])
-    parser.add_argument("stage", choices=["info", "erc", "validate", "netlist", "sim"])
+    parser.add_argument("stage", choices=["info", "erc", "validate", "netlist", "sim", "test"])
     parser.add_argument("circuit", type=Path, help="Python circuit description")
     parser.add_argument("--sweep", help="parameter sweep, e.g. C=1N,10N,100N,1U")
     parser.add_argument("--plot", type=Path, help="PNG output for sim waveforms")
@@ -303,6 +357,8 @@ def main(argv: list[str] | None = None) -> None:
         stage_netlist(mod, args.outdir)
     elif args.stage == "sim":
         stage_sim(mod, sweep, args.plot)
+    elif args.stage == "test":
+        stage_test(mod, args.outdir)
 
 
 if __name__ == "__main__":

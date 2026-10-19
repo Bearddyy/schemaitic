@@ -127,6 +127,27 @@ class TestNetlistStage:
         assert '"R1"' in text and '"R2"' in text
 
 
+class TestDesignTestStage:
+    @needs_ngspice
+    def test_healthy_lpf_passes(self) -> None:
+        proc = run_cli("test", "examples/lpf_divider.py")
+        payload = json.loads(proc.stdout)  # last stdout line must be JSON
+        assert payload["passed"] is True
+        assert all(t["passed"] for t in payload["tests"])
+
+    @needs_ngspice
+    def test_broken_cap_fails_exit1(self) -> None:
+        # 10x cap moves the cutoff: the SPICE design test must fail the stage.
+        proc = run_cli("test", "examples/broken_lpf.py", expect_exit=1)
+        payload = json.loads(proc.stdout)
+        assert payload["passed"] is False
+        assert any(not t["passed"] for t in payload["tests"])
+
+    def test_function_design_without_class_fails_fast(self) -> None:
+        proc = run_cli("test", "examples/vdivider.py", expect_exit=1)
+        assert "Schematic subclass" in proc.stderr
+
+
 class TestArgParsing:
     def test_bad_sweep_spec_fails_fast(self) -> None:
         # SystemExit -> exit 1 with the message on stderr.

@@ -6,6 +6,8 @@ spice() adds the stimulus and picks analyses. Run via:
     tools/schemaitic.py sim examples/vdivider.py --sweep C=1N,10N,100N,1U --plot out.png
 """
 
+from typing import Any
+
 from skidl import TEMPLATE, Net, Part
 
 R_TOP = "10K"
@@ -36,7 +38,7 @@ def build(C: str | None = None) -> None:
         vin & r1 & vout & (r2 | c1[1, 2]) & gnd
 
 
-def spice(circuit) -> list[dict]:
+def spice(circuit: Any) -> list[dict[str, Any]]:
     """Pulse stimulus on VI; DC op point plus a 10 ms transient."""
     from InSpice.Unit import u_V
 

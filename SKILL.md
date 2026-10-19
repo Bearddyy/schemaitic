@@ -48,8 +48,15 @@ Repo: `~/repos/schemaitic`
 - `GroundedRule` (type-first via `Ground`), `PullRule(pin, {HIGH|LOW|FLOATING}, max_ohms=)` strap termination incl. resistor bounds, hard-strap accepted only on recognisable rails, `NoConnectRule`, `PinOnNetRule`, `LambdaRule`, `ManualRule` (input(); fails closed `--no-input`).
 - `ModeRule(pin, mode_requirements, mode_rules)`: part declares `mode=` at construction; rule checks strap termination matches the mode and injects mode-implied extra rules. `effective_rules(part)` resolves; `check_part` uses it. Any rule can re-parameterise per mode via `Rule.apply_to(part, mode)`.
 
+## Simulation design tests (Oct 2026)
+
+- `tools/simulations.py`: `Simulation.run(schematic) -> SimulationResult`; `result.assert_passed()` raises `SimFailure`. Built-ins: `OperatingPoint`, `ACResponse`, `LowPassFilter` (cutoff/rejection/passband assertions), `TransientPulse`.
+- Designs declare `design_tests() -> list[Simulation]`; CLI stage `test` discovers the module-local `Schematic` subclass, runs the tests, writes `out/design_tests.json`, exit 1 on violation. Negative control: `examples/broken_lpf.py` must FAIL.
+- InSpice gotchas (proven): inject sources on the NETLIST object (`nl.V("VSRC", pos, neg, ac_value=1 @ u_V)`); source ref must differ from node names it drives (InSpice keys both). Waveform node keys are LOWERCASE net names. PULSE: `src.dc_value = None; src.tran_value = "PULSE(...)"`.
+- Physics the assertion caught: filter cap sees R1||R2 (ideal source is 0 ohms AC), not R2 alone — fc = 1/(2 pi (R1||R2) C).
+- `content()` overrides must keep the base `**params: ValueLike` signature (mypy strict override check); use a `DEFAULTS: dict[str, ValueLike]` class attr merged with params.
+
 ## Open decisions
 
 - Rendering review workflow (SVG placement is randomized per run — keep outputs you like).
 - Part library search strategy (`search_parts_in_libs` vs. curated subset).
-- Simulation classes as DI modules (take a Schematic, instrument, assert — e.g. filter dB design tests) — AC API proven, integration pending.

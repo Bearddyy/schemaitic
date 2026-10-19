@@ -29,7 +29,8 @@ tools/        Typed core + CLI
   parts.py      Resistor/Capacitor/Inductor/Led with typed values and rules= kwargs
   rules.py      Rule engine: GroundedRule, PullRule, ModeRule, NoConnectRule, ...
   schematic.py  Schematic: owns a design; build/erc/validate/netlist/svg/spice_netlist
-  schemaitic.py CLI: netlist | svg | validate | sim (+ sweeps)
+  simulations.py Design tests: OperatingPoint, LowPassFilter, TransientPulse
+  schemaitic.py CLI: netlist | svg | validate | sim | test (+ sweeps)
 partslib/     Reusable custom parts, defined once, shared across designs
   <part>/       python class (pins, rules, spice_template) + .kicad_sym + model.lib
 examples/     Example designs
@@ -64,6 +65,33 @@ rules extracted from the datasheet, and SPICE model metadata; plus the
 `.kicad_sym` symbol and a `.lib` SPICE subckt. Designs import the class and
 get symbol, sim model, and rule checks automatically. `partslib/tl431/` is
 the reference implementation.
+
+## Simulation as design tests
+
+`tools/simulations.py` turns SPICE into assertions. A `Simulation` receives a
+built `Schematic` (dependency injection), attaches stimulus to the netlist
+copy, runs ngspice, measures, and asserts — a failing sim is a design
+regression, not a suggestion.
+
+- `OperatingPoint(node, expect_v=...)` — DC bias within tolerance.
+- `LowPassFilter(node, cutoff_hz=, rejection_hz=, min_rejection_db=)` —
+  measured -3 dB cutoff (log-interpolated) within tolerance, stopband
+  rejection met, optional passband-gain check.
+- `TransientPulse(node, expect_final_v=...)` — PULSE stimulus, plateau check.
+- Subclass `ACResponse`/`Simulation` for your own analyses.
+
+Declare the spec next to the circuit:
+
+```python
+class LpfDivider(Schematic):
+    def design_tests(self) -> list[Simulation]:
+        return [OperatingPoint(...), LowPassFilter(...)]
+```
+
+Then `tools/schemaitic.py test examples/lpf_divider.py` runs them and exits 1
+on any violation (`out/design_tests.json` has the per-assertion detail).
+`examples/broken_lpf.py` is the negative control: same spec, 10x capacitor,
+must fail.
 
 ## Stack
 

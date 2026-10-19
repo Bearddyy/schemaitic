@@ -23,7 +23,7 @@ __all__ = ["Value", "ValueLike", "to_value", "parse_scale"]
 ValueLike = Union["Value", int, float, str]
 
 _NUMBER = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
-_VALUE_RE = re.compile(rf"^(?P<num>{_NUMBER})\s*(?P<suf>[TGMKmunpFUuµ]?)$")
+_VALUE_RE = re.compile(rf"^(?P<num>{_NUMBER})\s*(?P<suf>[TGMKNmunpFUuµ]?)$")
 
 _SUFFIX_MULT: dict[str, float] = {
     "T": 1e12, "t": 1e12,

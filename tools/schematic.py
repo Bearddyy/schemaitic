@@ -61,6 +61,15 @@ class Schematic(Circuit):
             f"{type(self).__name__} must implement content()"
         )
 
+    def design_tests(self) -> list[Any]:
+        """SPICE design tests (simulations.Simulation) this circuit must pass.
+
+        Override to declare e.g. [LowPassFilter("vo", cutoff_hz=..., ...)].
+        `tools/schemaitic.py test <design>` runs each and reports JSON; a
+        failing assertion is a design regression (exit 1).
+        """
+        return []
+
     def build(self, **params: ValueLike) -> "Schematic":
         """(Re)build the design from scratch with the given parameters.
 
