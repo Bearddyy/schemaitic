@@ -15,7 +15,14 @@ if [ ! -x "$REPO/.venv/bin/python" ]; then
   "$PYTHON" -m venv "$REPO/.venv"
 fi
 "$REPO/.venv/bin/pip" install --upgrade pip -q
-"$REPO/.venv/bin/pip" install -q skidl schematizer
+"$REPO/.venv/bin/pip" install -q skidl schematizer inspice matplotlib
+
+# SPICE simulation needs ngspice with its shared library (libngspice.so):
+#   Arch: sudo pacman -S ngspice | Debian/Ubuntu: sudo apt install ngspice
+if ! command -v ngspice >/dev/null 2>&1; then
+  echo "    NOTE: ngspice not found - netlist/schematic generation works, but"
+  echo "    divider_sim.py (SPICE simulation) will fail until it is installed."
+fi
 
 # KiCad 6+ stores stock libraries as .kicad_symdir directories of .kicad_sym
 # files; SKiDL 3.x reads that format. The authoritative, current libraries are
