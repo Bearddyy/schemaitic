@@ -137,9 +137,12 @@ def stage_netlist(mod: types.ModuleType, outdir: Path) -> None:
 
     build_circuit(mod, {})
     outdir.mkdir(parents=True, exist_ok=True)
-    net_path = generate_netlist(tool=KICAD10, file_=str(outdir / "design"))
+    net_file = outdir / "design.net"
+    # generate_netlist returns the netlist STRING (and writes it to file_);
+    # it is not a path, despite the variable name it used to be given.
+    generate_netlist(tool=KICAD10, file_=str(net_file))
     svg_dir = generate_svg(tool=KICAD10, top_name="design", filepath=str(outdir))
-    print(json.dumps({"netlist": str(net_path), "svg_dir": str(svg_dir)}))
+    print(json.dumps({"netlist": str(net_file), "svg_dir": str(svg_dir)}))
 
 
 def run_spice(mod: types.ModuleType, params: dict[str, Any]) -> dict[str, Any]:
