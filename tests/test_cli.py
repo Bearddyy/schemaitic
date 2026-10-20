@@ -128,6 +128,34 @@ class TestNetlistStage:
         assert '"R1"' in text and '"R2"' in text
 
 
+class TestOoDesignStages:
+    """OO (Schematic-subclass) designs must not hit the empty-global-circuit
+    bug: module-level generate_netlist/generate_svg/default_circuit see the
+    restored empty circuit once build() closes its context."""
+
+    def test_info_lists_parts_of_oo_design(self) -> None:
+        proc = run_cli("info", "examples/lpf_divider.py")
+        assert "parts: 3" in proc.stdout
+        assert "R1" in proc.stdout and "C1" in proc.stdout
+
+    def test_validate_checks_oo_design_rules(self) -> None:
+        # The lpf design attaches GroundedRule x2; a vacuous [] would be a
+        # silent pass over an empty circuit (the old bug).
+        proc = run_cli("validate", "examples/lpf_divider.py", "--no-input")
+        payload = json.loads(proc.stdout)
+        assert len(payload) == 2
+        assert all(o["status"] == "pass" for o in payload)
+
+    def test_netlist_of_oo_design_contains_parts(self, tmp_path: Path) -> None:
+        run_cli("netlist", "examples/lpf_divider.py", "--outdir", str(tmp_path))
+        nets = list(tmp_path.glob("*.net"))
+        assert nets, f"no .net written to {tmp_path}"
+        text = nets[0].read_text()
+        assert '"R1"' in text and '"C1"' in text
+        # SVG must render too (schematizer crashed on the empty node before)
+        assert list(tmp_path.glob("*.svg"))
+
+
 class TestDesignTestStage:
     @needs_ngspice
     def test_healthy_lpf_passes(self) -> None:

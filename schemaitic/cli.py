@@ -88,9 +88,30 @@ def build_circuit(mod: types.ModuleType, params: dict[str, Any]) -> dict[str, in
     return {"errors": erc_logger.error.count, "warnings": erc_logger.warning.count}
 
 
+def active_circuit(mod: types.ModuleType, params: dict[str, Any]) -> Any:
+    """Build the design and return the circuit that actually holds it.
+
+    OO designs: the Schematic instance itself (build() closes its context,
+    so the module-level default circuit is empty again). Function designs:
+    the default circuit they populated. ERC counts reported the same way.
+    """
+    design_cls = find_design_class(mod)
+    if design_cls is not None:
+        design = design_cls()
+        design.build(**params)  # raises ERCFailure on errors
+        # build() already ran ERC; recount for the JSON payload contract.
+        from skidl import ERC
+        from skidl.logger import erc_logger
+
+        ERC()
+        return design, {"errors": erc_logger.error.count,
+                        "warnings": erc_logger.warning.count}
+    erc = build_circuit(mod, params)
+    return design_rules.default_circuit(), erc
+
+
 def stage_info(mod: types.ModuleType, sweep: tuple[str, list[str]] | None) -> None:
-    build_circuit(mod, {})
-    ckt = design_rules.default_circuit()
+    ckt, _ = active_circuit(mod, {})
     print(f"parts: {len(ckt.parts)}")
     for p in ckt.parts:
         print(f"  {str(p.ref):5} {getattr(p.lib, 'filename', '?')}:{p.name} value={p.value}")
@@ -102,7 +123,7 @@ def stage_info(mod: types.ModuleType, sweep: tuple[str, list[str]] | None) -> No
 
 
 def stage_erc(mod: types.ModuleType) -> None:
-    erc = build_circuit(mod, {})
+    _, erc = active_circuit(mod, {})
     payload: dict[str, Any] = {"warnings": erc["warnings"], "errors": erc["errors"]}
     print(json.dumps(payload, indent=2))
     if erc["errors"]:
@@ -110,9 +131,12 @@ def stage_erc(mod: types.ModuleType) -> None:
 
 
 def stage_validate(mod: types.ModuleType, allow_input: bool) -> None:
-    """Build the circuit, then run every part's attached rules."""
-    build_circuit(mod, {})
-    ckt = design_rules.default_circuit()
+    """Build the circuit, then run every part's attached rules.
+
+    Must validate the circuit the design actually built - the module-level
+    default circuit is empty for OO designs once build() exits its context.
+    """
+    ckt, _ = active_circuit(mod, {})
     outcomes = design_rules.check_all(
         list(ckt.parts), allow_input=allow_input
     )
@@ -131,10 +155,19 @@ def stage_validate(mod: types.ModuleType, allow_input: bool) -> None:
 
 
 def stage_netlist(mod: types.ModuleType, outdir: Path) -> None:
+    outdir.mkdir(parents=True, exist_ok=True)
+    design_cls = find_design_class(mod)
+    if design_cls is not None:
+        # OO design: the instance IS the circuit (see active_circuit).
+        design = design_cls()
+        design.build()
+        net_file = design.netlist(outdir)
+        svg_dir = design.svg(outdir)
+        print(json.dumps({"netlist": str(net_file), "svg_dir": str(svg_dir)}))
+        return
     from skidl import KICAD10, generate_netlist, generate_svg
 
     build_circuit(mod, {})
-    outdir.mkdir(parents=True, exist_ok=True)
     net_file = outdir / "design.net"
     # generate_netlist returns the netlist STRING (and writes it to file_);
     # it is not a path, despite the variable name it used to be given.
@@ -147,12 +180,13 @@ def run_spice(mod: types.ModuleType, params: dict[str, Any]) -> dict[str, Any]:
     """One full SPICE pass: build, convert, netlist, simulate, collect."""
     import numpy as np
 
-    from skidl import KICAD10, SPICE, generate_netlist, set_default_tool
+    from skidl import SPICE, set_default_tool
 
-    erc = build_circuit(mod, params)
+    # Build into whichever circuit the design actually populates (instance
+    # for OO designs, default for function-style) - see active_circuit.
+    ckt, erc = active_circuit(mod, params)
 
     # Auto-convert plain Device passives; anything else needs a model hook.
-    ckt = design_rules.default_circuit()
     from skidl.pyspice import C as SC, L as SL, R as SR
 
     converters = {"R": SR, "C": SC, "L": SL}
@@ -170,11 +204,19 @@ def run_spice(mod: types.ModuleType, params: dict[str, Any]) -> dict[str, Any]:
         for p in ckt.parts
         if not hasattr(p, "spice_pins")
     ]
-    circuit = generate_netlist()
+    # Instance method on the design's own circuit (module-level helper would
+    # use the empty global circuit for OO designs).
+    circuit = ckt.generate_netlist()
     if not hasattr(mod, "spice"):
+        hint = ""
+        if find_design_class(mod) is not None:
+            hint = (
+                " - this is an OO design; run its declared specs with "
+                "`schemaitic test <design>`"
+            )
         raise SystemExit(
             "circuit file must define spice(circuit) to add sources and "
-            "return analyses"
+            "return analyses" + hint
         )
     analyses_spec = mod.spice(circuit) or []
     if not analyses_spec:
@@ -275,6 +317,18 @@ def stage_sim(mod: types.ModuleType, sweep: tuple[str, list[str]] | None, plot: 
         print(f"plot: {plot}", file=sys.stderr)
 
 
+def find_design_class(mod: types.ModuleType) -> Any:
+    """The Schematic subclass DEFINED in this design module (not imported)."""
+    from .schematic import Schematic
+
+    for value in vars(mod).values():
+        if (isinstance(value, type) and issubclass(value, Schematic)
+                and value is not Schematic
+                and getattr(value, "__module__", None) == mod.__name__):
+            return value
+    return None
+
+
 def stage_test(mod: types.ModuleType, outdir: Path) -> None:
     """Run SPICE design tests declared by the design (Schematic.design_tests).
 
@@ -282,15 +336,7 @@ def stage_test(mod: types.ModuleType, outdir: Path) -> None:
     Works with OO designs (Schematic subclasses); function-style build()
     designs must migrate to declare tests on the class.
     """
-    from .schematic import Schematic
-
-    cls: type[Schematic] | None = None
-    for value in vars(mod).values():
-        if (isinstance(value, type) and issubclass(value, Schematic)
-                and value is not Schematic
-                and getattr(value, "__module__", None) == mod.__name__):
-            cls = value
-            break
+    cls = find_design_class(mod)
     if cls is None:
         raise SystemExit(
             f"{mod.__file__}: design must define a Schematic subclass "
