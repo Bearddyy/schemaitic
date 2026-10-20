@@ -30,9 +30,9 @@ from typing import Any, Optional
 
 from skidl import Circuit, KICAD10, reset, set_default_tool
 
-import nets  # noqa: F401  (installs the Ground/ERC compatibility patch)
-from rules import check_all
-from values import ValueLike  # re-export for design files
+from . import nets  # noqa: F401  (installs the Ground/ERC compatibility patch)
+from .rules import check_all
+from .values import ValueLike  # re-export for design files
 
 __all__ = ["Schematic"]
 

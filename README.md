@@ -45,15 +45,15 @@ the capacitor to the wrong value and `schemaitic test` fails with
 
 ```bash
 git clone <this repo> && cd schemaitic
-./setup.sh                    # venv, deps, KiCad libs, type gate, tests
+./setup.sh                    # venv, deps (editable install), KiCad libs, gates
 source env.sh                 # KiCad library paths for this shell
+source .venv/bin/activate     # brings in the `schemaitic` command
 
 # the stages (each chains whatever it needs)
-.venv/bin/python tools/schemaitic.py validate examples/lpf_divider.py --no-input
-.venv/bin/python tools/schemaitic.py test examples/lpf_divider.py
-.venv/bin/python tools/schemaitic.py sim examples/vdivider.py \
-    --sweep C=1N,10N,100N,1U --plot out/sweep.png
-.venv/bin/python tools/schemaitic.py netlist examples/lpf_divider.py
+schemaitic validate examples/lpf_divider.py --no-input
+schemaitic test examples/lpf_divider.py
+schemaitic sim examples/vdivider.py --sweep C=1N,10N,100N,1U --plot out/sweep.png
+schemaitic netlist examples/lpf_divider.py
 ```
 
 Pipeline: `build circuit -> ERC -> rules -> KiCad netlist/SVG -> SPICE -> ngspice`
@@ -64,19 +64,28 @@ Requirements: Python 3.12+ (3.14 used here) and ngspice
 ## Layout
 
 ```
-tools/         Typed core + CLI
-  values.py      Value: typed electrical values (10K, 4.7k, 100n -> SI floats)
-  nets.py        Ground: ground-like nets as a TYPE, not a naming convention
-  parts.py       Resistor/Capacitor/Inductor/Led: typed values, rules= kwarg
-  rules.py       Rule engine: GroundedRule, PullRule, ModeRule, NoConnectRule...
-  schematic.py   Schematic: owns a design; build/erc/validate/netlist/svg/spice
-  simulations.py Design tests: OperatingPoint, ACResponse, LowPassFilter, TransientPulse
-  schemaitic.py  CLI stages: info | erc | validate | netlist | sim | test
-partslib/      Custom parts, digitised once, reused across designs
-  <part>/        python class (pins, rules, spice_template) + .kicad_sym + model.lib
-examples/      Example designs (lpf_divider = reference; broken_lpf = negative control)
-tests/         pytest suite: rules engine, simulations, CLI end-to-end
-templates/     Starting points for common circuit blocks
+schemaitic/          The Python package (pip install -e .; import from anywhere)
+  __init__.py          Public API: re-exports SKiDL primitives + everything below
+  values.py            Value: typed electrical values (10K, 4.7k, 100n -> SI floats)
+  nets.py              Ground: ground-like nets as a TYPE, not a naming convention
+  parts.py             Resistor/Capacitor/Inductor/Led: typed values, rules= kwarg
+  rules.py             Rule engine: GroundedRule, PullRule, ModeRule, NoConnectRule...
+  schematic.py         Schematic: owns a design; build/erc/validate/netlist/svg/spice
+  simulations.py       Design tests: OperatingPoint, ACResponse, LowPassFilter, TransientPulse
+  cli.py               CLI stages: info | erc | validate | netlist | sim | test
+  partslib/            Custom parts, digitised once, reused across designs
+    <part>/              python class (pins, rules, spice_template) + .kicad_sym + model.lib
+examples/          Example designs (lpf_divider = reference; broken_lpf = negative control)
+tests/             pytest suite: rules engine, simulations, CLI end-to-end
+templates/         Starting points for common circuit blocks
+```
+
+Designs import only the package — never `skidl` directly, never path hacks:
+
+```python
+from schemaitic import Ground, Net, Resistor, Capacitor, Schematic
+from schemaitic.rules import GroundedRule
+from schemaitic.simulations import LowPassFilter
 ```
 
 ## Rules engine
@@ -112,14 +121,14 @@ writes `out/design_tests.json`, exits 1 on any violation.
 
 ## Parts library
 
-Digitise a part once in `partslib/<name>/`: Python class with typed pins,
+Digitise a part once in `schemaitic/partslib/<name>/`: Python class with typed pins,
 datasheet rules, and SPICE model metadata, plus the `.kicad_sym` symbol and
 a `.lib` subckt. Designs import the class and get symbol, sim model, and
-rule checks automatically. `partslib/tl431/` is the reference implementation.
+rule checks automatically. `schemaitic/partslib/tl431/` is the reference implementation.
 
 ## Quality gates
 
-- `./check.sh` — mypy strict over `tools/ tests/ examples/`; hard gate, wired
+- `./check.sh` — mypy strict over `schemaitic/ tests/ examples/`; hard gate, wired
   into `setup.sh`
 - `.venv/bin/python -m pytest tests/ -q` — 60 tests incl. CLI subprocess
   end-to-end and negative controls

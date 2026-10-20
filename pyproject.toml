@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "schemaitic"
+version = "0.1.0"
+description = "Typed, object-oriented electronics design on SKiDL: schematics, rules, and SPICE design tests from one Python source."
+requires-python = ">=3.12"
+dependencies = [
+    "skidl>=3.0",
+    "schematizer",
+    "inspice",
+    "matplotlib",
+    "numpy",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "mypy",
+]
+
+[project.scripts]
+schemaitic = "schemaitic.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["schemaitic*"]
+
+[tool.setuptools.package-data]
+# Custom parts ship their symbol + SPICE model files inside the package.
+"schemaitic.partslib.tl431" = ["*.kicad_sym", "*.lib", "*.spice", "*.yaml", "*.pickle"]

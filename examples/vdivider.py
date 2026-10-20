@@ -3,12 +3,12 @@
 Single source of truth for SchemAItic: build() makes the circuit,
 spice() adds the stimulus and picks analyses. Run via:
 
-    tools/schemaitic.py sim examples/vdivider.py --sweep C=1N,10N,100N,1U --plot out.png
+    schemaitic sim examples/vdivider.py --sweep C=1N,10N,100N,1U --plot out.png
 """
 
 from typing import Any
 
-from skidl import TEMPLATE, Net, Part
+from schemaitic import TEMPLATE, Net, Part
 
 R_TOP = "10K"
 R_BOT = "4.7K"

@@ -8,20 +8,18 @@ Kept self-contained (no sibling imports) so type-checking resolves cleanly.
 from __future__ import annotations
 
 import math
-import sys
-from pathlib import Path
 
-TOOLS = Path(__file__).resolve().parent.parent / "tools"
-if str(TOOLS) not in sys.path:
-    sys.path.insert(0, str(TOOLS))
-
-from skidl import Net  # noqa: E402
-
-from nets import Ground  # noqa: E402
-from parts import Capacitor, Resistor  # noqa: E402
-from schematic import Schematic  # noqa: E402
-from simulations import LowPassFilter, OperatingPoint, Simulation  # noqa: E402
-from values import ValueLike  # noqa: E402
+from schemaitic import (
+    Capacitor,
+    Ground,
+    LowPassFilter,
+    Net,
+    OperatingPoint,
+    Resistor,
+    Schematic,
+    Simulation,
+    ValueLike,
+)
 
 R_TOP_OHM = 10e3
 R_BOT_OHM = 4.7e3

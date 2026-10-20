@@ -21,9 +21,9 @@ from typing import Any, Optional, Tuple
 
 from skidl import Net, Part as SkidlPart
 
-from nets import Ground  # re-export: schematics import nets from one place
-from rules import Rule, attach_rules
-from values import Value, ValueLike, to_value
+from .nets import Ground  # re-export: schematics import nets from one place
+from .rules import Rule, attach_rules
+from .values import Value, ValueLike, to_value
 
 __all__ = [
     "Capacitor",

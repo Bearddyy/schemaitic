@@ -5,7 +5,7 @@ overview is in [README.md](README.md); this file is about *how to work here*.
 
 ## Non-negotiables
 
-1. **mypy strict is a hard gate.** `./check.sh tools tests examples` must be
+1. **mypy strict is a hard gate.** `./check.sh schemaitic tests examples` must be
    clean before committing. Everything on top of SKiDL/InSpice is annotated;
    only the audited boundary code in `nets.py`/`parts.py` may lean on `Any`.
 2. **Run the full suite** before committing:
@@ -17,6 +17,9 @@ overview is in [README.md](README.md); this file is about *how to work here*.
    this file when behaviour or conventions change.
 5. **Show Dan diffs/text for review before edits to his designs**;
    no AI-sounding language in user-facing prose.
+6. **Import boundary: `from schemaitic import ...` only.** The package
+   re-exports the SKiDL primitives designs need; no `from skidl import ...`,
+   no `sys.path` hacks, in any design, test, or example.
 
 ## Environment
 
@@ -55,24 +58,25 @@ overview is in [README.md](README.md); this file is about *how to work here*.
 
 ## Adding things
 
-- **New rule type**: subclass `Rule` in `tools/rules.py`, implement
+- **New rule type**: subclass `Rule` in `schemaitic/rules.py`, implement
   `check(part) -> RuleOutcome`; optional `apply_to(part, mode)` for
   mode-dependent re-parameterisation. Add pass + fail unit tests in
   `tests/test_rules.py`.
 - **New simulation type**: subclass `Simulation` (or `ACResponse`) in
-  `tools/simulations.py`; populate `SimulationResult` via `res.check(...)`;
+  `schemaitic/simulations.py`; populate `SimulationResult` via `res.check(...)`;
   add an end-to-end test with a negative control.
-- **New custom part**: create `partslib/<name>/` with `__init__.py`, typed
-  class (pins, datasheet `rules=(...)`, `spice_template`), `<NAME>.kicad_sym`,
-  and `model.lib` (extension must be `.lib`/`.spice`, not `.sp`).
-  `partslib/tl431/` is the reference.
+- **New custom part**: create `schemaitic/partslib/<name>/` with `__init__.py`,
+  typed class (pins, datasheet `rules=(...)`, `spice_template`),
+  `<NAME>.kicad_sym`, and `model.lib` (extension must be `.lib`/`.spice`, not
+  `.sp`). `schemaitic/partslib/tl431/` is the reference.
 - **New design**: `examples/<name>.py` with a `Schematic` subclass, a
   `build()` wrapper for the legacy stages, and `design_tests()` where a
   spec exists.
 
 ## CLI contract
 
-`schemaitic.py <stage> <design.py>` — `info | erc | validate | netlist | sim | test`
+`schemaitic <stage> <design.py>` (console script, or `python -m schemaitic`)
+— `info | erc | validate | netlist | sim | test`
 
 - stdout is JSON (machine contract — keep it parseable; numpy arrays are a
   classic leak, serialise with `default=str`); progress goes to stderr.
@@ -90,7 +94,7 @@ overview is in [README.md](README.md); this file is about *how to work here*.
 
 ## Verification before "done"
 
-1. `./check.sh tools tests examples` → `mypy: clean`
+1. `./check.sh schemaitic tests examples` → `mypy: clean`
 2. `.venv/bin/python -m pytest tests/ -q` → all pass (60 at time of writing)
 3. Affected CLI stages re-run manually on `examples/lpf_divider.py` (must
    pass) and `examples/broken_lpf.py` (must fail with exit 1)

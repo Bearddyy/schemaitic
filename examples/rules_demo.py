@@ -6,19 +6,12 @@ Shows the three outcomes the runner can produce:
   - MANUAL_*    rule needs a human (heatsink clearance prompt)
 
 Run:
-    tools/schemaitic.py validate examples/rules_demo.py          # prompts
-    tools/schemaitic.py validate examples/rules_demo.py --no-input  # CI mode
+    schemaitic validate examples/rules_demo.py          # prompts
+    schemaitic validate examples/rules_demo.py --no-input  # CI mode
 """
 
-import sys
-from pathlib import Path
-
-# Circuit files are loaded from anywhere; make tools/rules.py importable.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
-
-from skidl import Net, Part
-
-from rules import (
+from schemaitic import Net, Part
+from schemaitic.rules import (
     GroundedRule,
     ManualRule,
     NoConnectRule,

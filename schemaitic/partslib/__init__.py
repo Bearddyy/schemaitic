@@ -15,22 +15,11 @@ rules, and simulation finds its SPICE model through ``spice_template()`` /
 from the datasheet, model from the vendor) and every design inherits all of it.
 
 Passives that need no customisation (plain R/C/L) do NOT belong here —
-they come from the standard KiCad Device lib via ``tools/parts.py``.
+they come from the standard KiCad Device lib via ``schemaitic.parts``.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
-#: Repo root -> tools on sys.path so partslib modules can import parts/rules
-#: even when a design file imported partslib directly.
-_HERE = Path(__file__).resolve().parent
-_TOOLS = _HERE.parent / "tools"
-import sys
-
-if str(_TOOLS) not in sys.path:
-    sys.path.insert(0, str(_TOOLS))
-
-from partslib.tl431 import TL431  # noqa: E402
+from .tl431 import TL431
 
 __all__ = ["TL431"]

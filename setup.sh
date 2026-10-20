@@ -15,9 +15,10 @@ if [ ! -x "$REPO/.venv/bin/python" ]; then
   "$PYTHON" -m venv "$REPO/.venv"
 fi
 "$REPO/.venv/bin/pip" install --upgrade pip -q
-"$REPO/.venv/bin/pip" install -q skidl schematizer inspice matplotlib
-# Dev/quality tools: the fail-early gate (./check.sh) and unit tests.
-"$REPO/.venv/bin/pip" install -q mypy pytest
+# The package itself (deps: skidl, schematizer, inspice, matplotlib) plus dev
+# extras (mypy, pytest) in editable mode: `import schemaitic` and the
+# `schemaitic` CLI work from anywhere in the venv.
+"$REPO/.venv/bin/pip" install -q -e "$REPO[dev]"
 
 # SPICE simulation needs ngspice with its shared library (libngspice.so):
 #   Arch: sudo pacman -S ngspice | Debian/Ubuntu: sudo apt install ngspice
@@ -58,4 +59,4 @@ source "$REPO/env.sh"
   || { echo "    smoke test FAILED - run examples/divider.py manually"; exit 1; }
 
 echo "Done. Usage: source env.sh && .venv/bin/python <script>.py"
-echo "Workflow gate: ./check.sh (mypy strict) before committing tools/ changes."
+echo "Workflow gate: ./check.sh (mypy strict) before committing package changes."

@@ -1,16 +1,15 @@
-"""Pytest configuration: make tools/ importable and set KiCad lib paths.
+"""Pytest configuration: set KiCad lib paths for bare-`pytest` runs.
 
 Tests that instantiate SKiDL parts need KICAD{6..10}_SYMBOL_DIR/FOOTPRINT_DIR
-(the same exports env.sh provides), so they can run via bare `pytest` without
-sourcing anything first.
+(the same exports env.sh provides), so they can run without sourcing anything.
+The schemaitic package itself is installed (pip install -e .), so no sys.path
+hacks live here or in any test.
 """
 
 import os
-import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "tools"))
 
 LIBS = REPO / "kicad-libs"
 for _v in range(6, 11):

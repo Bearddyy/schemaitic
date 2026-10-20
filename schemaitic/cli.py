@@ -38,9 +38,7 @@ import types
 from pathlib import Path
 from typing import Any, Callable
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-import rules as design_rules
+from . import rules as design_rules
 
 # KiCad library parts SKiDL can translate to SPICE automatically.
 AUTO_SPICE = {
@@ -284,7 +282,7 @@ def stage_test(mod: types.ModuleType, outdir: Path) -> None:
     Works with OO designs (Schematic subclasses); function-style build()
     designs must migrate to declare tests on the class.
     """
-    from schematic import Schematic
+    from .schematic import Schematic
 
     cls: type[Schematic] | None = None
     for value in vars(mod).values():

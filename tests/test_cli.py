@@ -16,7 +16,8 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 VENV_PY = REPO / ".venv" / "bin" / "python"
-CLI = REPO / "tools" / "schemaitic.py"
+# The package is installed editable; invoke via -m so design loading matches
+# every real invocation path.
 
 needs_ngspice = pytest.mark.skipif(
     shutil.which("ngspice") is None, reason="ngspice not installed"
@@ -25,7 +26,7 @@ needs_ngspice = pytest.mark.skipif(
 
 def run_cli(*args: str, expect_exit: int = 0) -> subprocess.CompletedProcess[str]:
     proc = subprocess.run(
-        [str(VENV_PY), str(CLI), *args],
+        [str(VENV_PY), "-m", "schemaitic", *args],
         capture_output=True,
         text=True,
         timeout=600,

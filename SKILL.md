@@ -36,11 +36,11 @@ Repo: `~/repos/schemaitic`
 
 ## Typed OO layer (Oct 2026)
 
-- `tools/values.py` `Value`: typed electrical values; construct with `10e3`, `"10K"`, `"100n"`; `.si` float, `.spice()` engineering string. Garbage raises at construction.
-- `tools/nets.py` `Ground(Net)`: ground as a TYPE (`.ground` property). SKiDL ERC compares `type(n) == Net` exactly, so nets.py carries an audited `Pin.is_connected` compat patch — never duplicate it.
-- `tools/parts.py`: `Resistor("R1", "10K", footprint=..., rules=(...), mode=...)`; unknown kwargs rejected; `mode=` declares operating mode (see ModeRule).
-- `tools/schematic.py` `Schematic(Circuit)`: subclass implements `content()`, call `build(**params)` (full reset each rebuild — fresh nets inside the context; never reuse held nets across rebuilds). `erc()`/`validate()` raise on failure; `spice_netlist()` converts Device passives plus partslib parts carrying `spice_template`. Must call the *instance* `generate_netlist(tool=SPICE)` — the module-level function sees the empty global circuit after the context closes.
-- `partslib/<name>/`: custom part defined once — python class (pins, datasheet rules, `spice_template`) + `.kicad_sym` + `model.lib` (suffix must be `.lib`/`.spice`, not `.sp`).
+- `schemaitic/values.py` `Value`: typed electrical values; construct with `10e3`, `"10K"`, `"100n"`; `.si` float, `.spice()` engineering string. Garbage raises at construction.
+- `schemaitic/nets.py` `Ground(Net)`: ground as a TYPE (`.ground` property). SKiDL ERC compares `type(n) == Net` exactly, so nets.py carries an audited `Pin.is_connected` compat patch — never duplicate it.
+- `schemaitic/parts.py`: `Resistor("R1", "10K", footprint=..., rules=(...), mode=...)`; unknown kwargs rejected; `mode=` declares operating mode (see ModeRule).
+- `schemaitic/schematic.py` `Schematic(Circuit)`: subclass implements `content()`, call `build(**params)` (full reset each rebuild — fresh nets inside the context; never reuse held nets across rebuilds). `erc()`/`validate()` raise on failure; `spice_netlist()` converts Device passives plus partslib parts carrying `spice_template`. Must call the *instance* `generate_netlist(tool=SPICE)` — the module-level function sees the empty global circuit after the context closes.
+- `schemaitic/partslib/<name>/`: custom part defined once — python class (pins, datasheet rules, `spice_template`) + `.kicad_sym` + `model.lib` (suffix must be `.lib`/`.spice`, not `.sp`).
 
 ## Rules engine
 
@@ -50,7 +50,7 @@ Repo: `~/repos/schemaitic`
 
 ## Simulation design tests (Oct 2026)
 
-- `tools/simulations.py`: `Simulation.run(schematic) -> SimulationResult`; `result.assert_passed()` raises `SimFailure`. Built-ins: `OperatingPoint`, `ACResponse`, `LowPassFilter` (cutoff/rejection/passband assertions), `TransientPulse`.
+- `schemaitic/simulations.py`: `Simulation.run(schematic) -> SimulationResult`; `result.assert_passed()` raises `SimFailure`. Built-ins: `OperatingPoint`, `ACResponse`, `LowPassFilter` (cutoff/rejection/passband assertions), `TransientPulse`.
 - Designs declare `design_tests() -> list[Simulation]`; CLI stage `test` discovers the module-local `Schematic` subclass, runs the tests, writes `out/design_tests.json`, exit 1 on violation. Negative control: `examples/broken_lpf.py` must FAIL.
 - InSpice gotchas (proven): inject sources on the NETLIST object (`nl.V("VSRC", pos, neg, ac_value=1 @ u_V)`); source ref must differ from node names it drives (InSpice keys both). Waveform node keys are LOWERCASE net names. PULSE: `src.dc_value = None; src.tran_value = "PULSE(...)"`.
 - Physics the assertion caught: filter cap sees R1||R2 (ideal source is 0 ohms AC), not R2 alone — fc = 1/(2 pi (R1||R2) C).

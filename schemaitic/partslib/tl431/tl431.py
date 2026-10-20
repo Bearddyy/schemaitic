@@ -10,8 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from parts import PartBase
-from rules import GroundedRule, Rule
+from ...parts import PartBase
+from ...rules import GroundedRule, Rule
 
 _HERE = Path(__file__).resolve().parent
 SYMBOL = _HERE / "TL431.kicad_sym"

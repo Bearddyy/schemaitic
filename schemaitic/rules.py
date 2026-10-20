@@ -383,7 +383,7 @@ class PullRule(Rule):
         si = getattr(val, "si", None)  # schemaitic Value
         if si is not None:
             return float(si)
-        from values import Value  # plain string values from SKiDL libs
+        from .values import Value  # plain string values from SKiDL libs
 
         try:
             return Value.parse(str(val)).si

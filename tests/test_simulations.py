@@ -6,15 +6,12 @@ never fail is worse than no test).
 """
 
 import math
-import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
-
-from simulations import (  # noqa: E402
+from schemaitic.simulations import (
     AssertionResult,
     LowPassFilter,
     OperatingPoint,
@@ -97,10 +94,7 @@ class TestCutoffMath:
 
 
 def _divider_cls() -> type:
-    from nets import Ground  # noqa: F401 (installs ERC patch)
-    from parts import Capacitor, Resistor
-    from schematic import Schematic
-    from skidl import Net
+    from schemaitic import Capacitor, Ground, Net, Resistor, Schematic
 
     class Divider(Schematic):
         def content(self, **params: object) -> None:

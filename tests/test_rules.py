@@ -5,15 +5,11 @@ violations are reported with actionable detail, manual rules never silently
 pass in CI mode.
 """
 
-import sys
-from pathlib import Path
 from types import SimpleNamespace
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 
 import pytest
 
-from rules import (
+from schemaitic.rules import (
     GroundedRule,
     LambdaRule,
     ManualRule,
@@ -110,7 +106,7 @@ class TestRules:
         assert not out.ok
 
     def test_rule_base_class_is_abstract(self) -> None:
-        from rules import Rule
+        from schemaitic.rules import Rule
 
         with pytest.raises(NotImplementedError):
             Rule("nothing").check(make_part({}))
