@@ -9,6 +9,10 @@ description is the single source of truth for:
 - **Simulation** — SPICE runs that assert design specs (cutoff frequency,
   DC bias, rejection) like unit tests do for software
 
+Designs import one package (`from schemaitic import ...`), are gated by
+mypy strict, and ship their own SPICE design tests — see
+[examples/lpf_divider.py](examples/lpf_divider.py) end to end.
+
 ## A design looks like this
 
 ```python
