@@ -1,11 +1,9 @@
-"""RC low-pass divider: 5 V in, 10K top, 4.7K bottom, 100n across R2.
-
-OO-style design with typed values, a Ground net, datasheet rules, and SPICE
-design tests (the circuit's spec lives next to the circuit):
+"""Voltage divider with an optional cap across the bottom resistor —
+reference design: typed parts, datasheet rules, ground as a type,
+and SPICE design tests declaring the spec.
 
     schemaitic validate examples/lpf_divider.py --no-input
     schemaitic test examples/lpf_divider.py
-    schemaitic sim examples/lpf_divider.py --plot out/lpf.png
 """
 
 from __future__ import annotations
