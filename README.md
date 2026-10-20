@@ -134,5 +134,3 @@ rule checks automatically. `partslib/tl431/` is the reference implementation.
   sims from the same Python source
 - KiCad symbol/footprint libraries cloned from
   [GitLab](https://gitlab.com/kicad/libraries) (GitHub mirrors are stale)
-
-For AI agents working in this repo: see [AGENTS.md](AGENTS.md).
