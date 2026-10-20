@@ -1,9 +1,0 @@
-skidl>=3.0
-schematizer
-inspice
-matplotlib
-numpy
-
-[dev]
-pytest
-mypy

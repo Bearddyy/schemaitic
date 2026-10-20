@@ -19,3 +19,8 @@ kicad-libs/
 out/
 fp-lib-table
 sym-lib-table
+
+schemaitic.egg-info/
+build/
+dist/
+*.egg-info/
