@@ -38,7 +38,10 @@ class BrokenLpf(Schematic):
         r1 = Resistor("R1", p["R_top"])
         r2 = Resistor("R2", p["R_bot"])
         c1 = Capacitor("C1", p["C"])
-        vin & r1 & vout & (r2 | c1[1, 2]) & gnd
+        # Each net lists the pins that live on it.
+        vin.connect(r1[1])
+        vout.connect(r1[2], r2[1], c1[1])
+        gnd.connect(r2[2], c1[2])
 
     def design_tests(self) -> list[Simulation]:
         # Spec for the HEALTHY filter (C=100n); this build has C=1U.

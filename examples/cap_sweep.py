@@ -36,7 +36,9 @@ def simulate_cap(cap_value: str) -> tuple[np.ndarray, np.ndarray]:
     )
     c1.value, c1.tag = cap_value, "C1"
 
-    vin & r1 & vout & (r2 | c1[1, 2]) & gnd
+    vin.connect(r1[1])
+    vout.connect(r1[2], r2[1], c1[1])
+    gnd.connect(r2[2], c1[2])
 
     set_default_tool(SPICE)
     r1.convert_for_spice(R, {1: "p", 2: "n"})

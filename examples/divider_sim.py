@@ -38,7 +38,9 @@ c1 = Part(
 c1.value = "100N"
 c1.tag = "C1"
 
-vin & r1 & vout & (r2 | c1[1, 2]) & gnd
+vin.connect(r1[1])
+vout.connect(r1[2], r2[1], c1[1])
+gnd.connect(r2[2], c1[2])
 
 # --- Convert KiCad parts to their SPICE equivalents ---
 set_default_tool(SPICE)

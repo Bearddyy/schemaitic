@@ -104,7 +104,9 @@ def _divider_cls() -> type:
             r1 = Resistor("R1", "10K")
             r2 = Resistor("R2", "4.7K")
             c1 = Capacitor("C1", c_val)
-            vin & r1 & vout & (r2 | c1[1, 2]) & gnd
+            vin.connect(r1[1])
+            vout.connect(r1[2], r2[1], c1[1])
+            gnd.connect(r2[2], c1[2])
 
     return Divider
 

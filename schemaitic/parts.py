@@ -12,7 +12,9 @@ immediately (fail-early ideology).
     r1 = Resistor("R1", 10e3)          # ohms
     r2 = Resistor("R2", "4.7K")        # or SI-suffixed text, parsed once
     c1 = Capacitor("C1", "100n")
-    vin & r1 & vout & (r2 | c1) & gnd   # SKiDL operators work unchanged
+    vin.connect(r1[1])
+    vout.connect(r1[2], r2[1], c1[1])
+    gnd.connect(r2[2], c1[2])   # nets name their pins; SKiDL operators also work
 """
 
 from __future__ import annotations

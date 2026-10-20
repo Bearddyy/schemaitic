@@ -17,7 +17,9 @@ r1, r2 = 2 * Part(
 r1.value, r2.value = "10K", "4.7K"
 r1.tag, r2.tag = "R1", "R2"
 
-vin & r1 & vout & r2 & gnd
+vin.connect(r1[1])
+vout.connect(r1[2], r2[1])
+gnd.connect(r2[2])
 
 ERC()
 generate_netlist(tool=KICAD10)

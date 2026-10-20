@@ -26,7 +26,9 @@ def build(C: str | None = None) -> None:
     r1.tag, r2.tag = "R1", "R2"
 
     if C is None:
-        vin & r1 & vout & r2 & gnd
+        vin.connect(r1[1])
+        vout.connect(r1[2], r2[1])
+        gnd.connect(r2[2])
     else:
         # NOTE: no dest=TEMPLATE here - a lone TEMPLATE part is never
         # instantiated and silently drops out of the netlist.
@@ -35,7 +37,9 @@ def build(C: str | None = None) -> None:
             footprint="Capacitor_SMD.pretty:C_0805_2012Metric",
         )
         c1.value, c1.tag = C, "C1"
-        vin & r1 & vout & (r2 | c1[1, 2]) & gnd
+        vin.connect(r1[1])
+        vout.connect(r1[2], r2[1], c1[1])
+        gnd.connect(r2[2], c1[2])
 
 
 def spice(circuit: Any) -> list[dict[str, Any]]:

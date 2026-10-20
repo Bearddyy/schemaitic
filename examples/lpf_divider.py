@@ -42,7 +42,10 @@ class LpfDivider(Schematic):
         r1 = Resistor("R1", p["R_top"])
         r2 = Resistor("R2", p["R_bot"], rules=(GroundedRule(2),))  # bottom -> GND
         c1 = Capacitor("C1", p["C"], rules=(GroundedRule(2),))
-        vin & r1 & vout & (r2 | c1[1, 2]) & gnd
+        # Each net lists the pins that live on it.
+        vin.connect(r1[1])
+        vout.connect(r1[2], r2[1], c1[1])
+        gnd.connect(r2[2], c1[2])
         self.resolved = p
 
     def design_tests(self) -> list[Simulation]:

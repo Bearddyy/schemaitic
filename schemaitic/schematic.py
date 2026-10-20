@@ -12,7 +12,9 @@ to get out of sync:
             gnd = Ground("GND")
             r1 = Resistor("R1", R_top)
             r2 = Resistor("R2", "4.7K")
-            vin & r1 & vout & r2 & gnd
+            vin.connect(r1[1])
+            vout.connect(r1[2], r2[1])
+            gnd.connect(r2[2])
 
     d = Divider()
     d.build(R_top="4.7K")      # fresh build, ERC errors raised on the spot

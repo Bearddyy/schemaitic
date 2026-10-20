@@ -50,14 +50,16 @@ def build() -> None:
 
     # VI -> U1(1..2) gives pin1=VI (fails the power-net rule below since
     # VI is not power-like), pin2=GND via r1 keeps GroundedRule honest.
-    vin & u1[1]
-    u1[2] & r1 & gnd
+    wiper = Net("WIPER")  # between U1 pin 2 and R1
+    vin.connect(u1[1])
+    wiper.connect(u1[2], r1[1])
+    gnd.connect(r1[2])
     # pin 3 deliberately left connected to SIG -> violates NoConnectRule.
-    u1[3] & sig
+    sig.connect(u1[3])
 
     # A clean part: cap from SIG to GND, no rules attached -> nothing to fail.
     c1 = Part("Device", "C", tag="C1")
     c1.value = "100N"
     attach_rules(c1, [GroundedRule(2)])
-    sig & c1[1]
-    c1[2] & gnd
+    sig.connect(c1[1])
+    gnd.connect(c1[2])
